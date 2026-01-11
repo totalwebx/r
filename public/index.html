@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>WhatsApp Dashboard</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+<!-- ✅ QR MODAL -->
+<div id="qrModal" class="modal hidden" aria-hidden="true">
+  <div class="modalCard">
+    <div class="modalHead">
+      <div>
+        <div class="modalTitle">Connect WhatsApp</div>
+        <div class="modalSub">WhatsApp → Linked devices → Scan this QR</div>
+      </div>
+      <button id="qrCloseBtn" class="small">Close</button>
+    </div>
+
+    <div class="qrWrap">
+      <div id="qrBox"><div class="hint">Waiting for QR…</div></div>
+
+      <div class="qrInfo">
+        <div class="pill">Account: <span class="mono" id="qrClient">—</span></div>
+        <div class="pill">Updated: <span class="mono" id="qrTime">—</span></div>
+
+        <div class="hint" style="margin-top:10px;">
+          Keep this open until it connects.
+        </div>
+
+        <div class="btnRow" style="margin-top:12px;">
+          <button id="qrRefreshBtn" class="primary small">Refresh</button>
+          <button id="qrCopyBtn" class="small">Copy QR text</button>
+        </div>
+
+        <div class="hint" style="margin-top:12px;">
+          Reconnect anytime from <b>Account Management</b>.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">WA</div>
+      <div>
+        <div class="t1">WhatsApp Dashboard</div>
+        <div class="t2">Sender • Generator • Chats • Logs • Charts • Accounts</div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button id="navSender" class="active"><span>Sender</span><span class="badge">/send</span></button>
+      <button id="navGenerator"><span>Generator</span><span class="badge">Fill</span></button>
+      <button id="navChats"><span>Chats</span><span class="badge">CRM</span></button>
+      <button id="navLogs"><span>Logs</span><span class="badge">Data</span></button>
+      <button id="navCharts"><span>Charts</span><span class="badge">Stats</span></button>
+      <button id="navAccounts"><span>Account Management</span><span class="badge">Control</span></button>
+    </div>
+
+    <div class="foot">
+      <div><b>Variables</b> in messages:</div>
+      <!-- <div class="chipRow">
+        <span class="chip mono">{{number}}</span>
+        <span class="chip mono">{{jid}}</span>
+        <span class="chip mono">{{index}}</span>
+        <span class="chip mono">{{rand}}</span>
+      </div> -->
+
+      <div class="hint" style="margin-top:10px;">
+        Sender picks <b>one random message</b> per number.
+      </div>
+
+      <div class="foot2">
+        <div class="userPill">
+          <div class="mono" id="meUser">—</div>
+          <div class="mutedSmall">Credit: <b id="meCredit">$0</b></div>
+        </div>
+
+        <div class="btnRow" style="margin-top:10px;">
+          <button id="logoutBtn" class="danger small" style="width:100%;">Logout</button>
+        </div>
+
+        <div class="hint" id="billingHint" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="title">
+        <h1 id="pageTitle">Sender</h1>
+        <div class="sub" id="pageSub">Send with one account or distribute across all accounts automatically.</div>
+      </div>
+
+      <div class="topbarRight">
+        <!-- Accounts status -->
+        <div class="statusPill" title="Accounts status">
+          <div class="pillLeft">
+            <span id="dot" class="dot"></span>
+            <span id="healthText">Checking…</span>
+          </div>
+
+          <div class="pillRight">
+            <select id="clientSelect" style="max-width:180px;"></select>
+            <button id="connectBtn" class="small">Connect</button>
+            <button id="refreshBtn" class="small">Refresh</button>
+          </div>
+        </div>
+
+        <!-- ✅ Realtime progress panel -->
+        <div class="card miniCard">
+          <div class="miniHead">
+            <div>
+              <div class="miniTitle">Sending progress</div>
+              <div class="miniSub" id="jobMeta">No active job</div>
+            </div>
+            <div class="pill tiny mono" id="jobId">—</div>
+          </div>
+
+          <div class="progressWrap" style="margin-top:10px;">
+            <div class="progressBar"><div id="progressFill" class="progressFill" style="width:0%"></div></div>
+            <div class="progressRow">
+              <div class="mono" id="jobCounts">0 / 0</div>
+              <div class="mono" id="jobPct">0%</div>
+            </div>
+            <div class="hint" id="jobStats"></div>
+          </div>
+        </div>
+
+        <!-- Add WhatsApp -->
+        <div class="card miniCard">
+          <div class="miniHead">
+            <div class="miniTitle">Add WhatsApp</div>
+            <div class="miniSub">Unlimited accounts</div>
+          </div>
+
+          <div class="row2" style="margin-top:10px;">
+            <div>
+              <label style="margin-top:0;">Custom ID (optional)</label>
+              <input id="newClientId" placeholder="Example: wa4 or business1" />
+              <div class="hint">Allowed: letters, numbers, underscore, hyphen.</div>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button id="addClientBtn" class="primary" style="width:100%;">+ Add</button>
+            </div>
+          </div>
+
+          <div class="hint" id="addClientStatus" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SENDER PAGE -->
+    <section id="page-sender" class="page active">
+      <div class="grid">
+        <!-- Setup -->
+        <div class="card">
+          <h2>Send setup</h2>
+
+          <label>Numbers (one per line / comma / space)</label>
+          <textarea id="numbers" rows="8" placeholder="0642284241&#10;0612345678"></textarea>
+
+          <div class="row3" style="margin-top:8px;">
+            <div>
+              <label>Delay From (seconds)</label>
+              <input id="delayFrom" type="number" min="0" value="1" />
+            </div>
+            <div>
+              <label>Delay To (seconds)</label>
+              <input id="delayTo" type="number" min="0" value="3" />
+            </div>
+            <div>
+              <label>Limit (max numbers)</label>
+              <input id="limit" type="number" min="0" value="0" />
+              <div class="hint">0 = send to all</div>
+            </div>
+          </div>
+
+          <!-- Safe Mode -->
+          <div class="card" style="margin-top:14px; background: rgba(255,255,255,.03);">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+              <div>
+                <h2 style="margin:0 0 6px 0;">Safe Mode</h2>
+                <div class="hint">
+                  Prevent rate limits: warm-up + per-account cap + cooldown + auto failover.
+                </div>
+              </div>
+              <label style="margin:0; display:flex; align-items:center; gap:10px;">
+                <input id="safeMode" type="checkbox" style="width:auto; margin:0;">
+                <span style="color:var(--text); font-weight:700;">Enable</span>
+              </label>
+            </div>
+
+            <div class="row2" style="margin-top:10px;">
+              <div>
+                <label style="margin-top:0;">Preset</label>
+                <select id="safePreset">
+                  <option value="chill">Chill (very safe)</option>
+                  <option value="normal" selected>Normal (recommended)</option>
+                  <option value="aggressive">Aggressive (faster)</option>
+                </select>
+                <div class="hint">Preset updates sliders. You can still customize after.</div>
+              </div>
+
+              <div>
+                <label style="margin-top:0;">Per account max / minute</label>
+                <input id="perClientMaxPerMinute" type="number" min="1" value="18" />
+                <div class="hint">Hard cap (safe mode only).</div>
+              </div>
+            </div>
+
+            <div class="row2" style="margin-top:10px;">
+              <div>
+                <label style="margin-top:0;">Warm-up minutes</label>
+                <input id="warmupMinutes" type="number" min="0" value="6" />
+                <div class="hint">Starts slow then ramps up gradually.</div>
+              </div>
+              <div>
+                <label style="margin-top:0;">Extra delay between sends (seconds)</label>
+                <div class="row2" style="margin-top:0;">
+                  <div>
+                    <input id="safeExtraDelayFrom" type="number" min="0" value="1" />
+                    <div class="hint">From</div>
+                  </div>
+                  <div>
+                    <input id="safeExtraDelayTo" type="number" min="0" value="3" />
+                    <div class="hint">To</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="hint" id="safeHint" style="margin-top:8px;"></div>
+          </div>
+
+          <!-- Send Mode -->
+          <div class="card" style="margin-top:14px; background: rgba(255,255,255,.03);">
+            <h2 style="margin-bottom:6px;">Send mode</h2>
+
+            <div class="row2">
+              <div>
+                <label style="margin-top:0;">Mode</label>
+                <select id="sendMode">
+                  <option value="single" selected>Send with selected account</option>
+                  <option value="all">Distribute across all connected accounts</option>
+                </select>
+                <div class="hint">“All” uses quotas per account (auto-adjusted).</div>
+              </div>
+
+              <div>
+                <label style="margin-top:0;">Total targets (auto)</label>
+                <input id="totalTargets" disabled value="0" />
+                <div class="hint">Calculated from numbers + limit.</div>
+              </div>
+            </div>
+
+            <!-- Quotas area -->
+            <div id="quotaBox" class="quotaBox hidden">
+              <div class="quotaHead">
+                <div>
+                  <div class="quotaTitle">Account limits</div>
+                  <div class="hint">Edit one account → others auto adjust so total stays exact.</div>
+                </div>
+                <button id="equalSplitBtn" class="small">Equal split</button>
+              </div>
+
+              <div id="quotaList" class="quotaList"></div>
+              <div class="hint" id="quotaHint"></div>
+            </div>
+          </div>
+
+          <label>Photo (optional)</label>
+          <input id="photo" type="file" accept="image/*" />
+
+          <div class="card" style="margin-top:14px; background: rgba(255,255,255,.03);">
+            <h2 style="margin-bottom:6px;">Contact card (optional)</h2>
+
+            <label style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+              <input id="sendContactEnabled" type="checkbox" style="width:auto; margin:0;">
+              Send a contact card (vCard)
+            </label>
+
+            <div class="row2">
+              <div>
+                <label>Contact name</label>
+                <input id="contactName" placeholder="Example: Support" />
+              </div>
+              <div>
+                <label>Contact phone</label>
+                <input id="contactPhone" placeholder="Example: 0600000000" />
+              </div>
+            </div>
+
+            <div class="hint">If enabled: contact card sends first, then photo/text.</div>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="card">
+          <h2>Messages (random pick)</h2>
+          <div class="hint">Add unlimited messages. For each number, server picks <b>one random message</b>.</div>
+
+          <div id="messages"></div>
+
+          <div class="btnRow">
+            <button id="addMsgBtn" class="primary">+ Add message</button>
+            <button id="addExampleBtn">Add example</button>
+            <button id="clearMsgsBtn" class="danger">Clear</button>
+          </div>
+
+          <label>Preview (first number)</label>
+          <pre id="preview">(Add a message to preview…)</pre>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Run</h2>
+        <div class="btnRow">
+          <button id="sendBtn" class="primary">Send</button>
+          <button id="useGeneratedBtn">Use generated numbers</button>
+        </div>
+
+        <div class="hint" id="status"></div>
+        <pre id="result"></pre>
+      </div>
+    </section>
+
+
+    <!-- GENERATOR PAGE -->
+    <section id="page-generator" class="page">
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="card">
+          <h2>Phone Numbers Generator</h2>
+          <div class="hint">Prefix + total length → sequential or random numbers.</div>
+
+          <label>Prefix</label>
+          <input id="prefix" placeholder="Example: 064228" value="064228" />
+
+          <div class="row2">
+            <div>
+              <label>Total length</label>
+              <input id="totalLen" type="number" min="1" value="10" />
+            </div>
+            <div>
+              <label>Count</label>
+              <input id="count" type="number" min="1" value="50" />
+            </div>
+          </div>
+
+          <div class="row2">
+            <div>
+              <label>Mode</label>
+              <select id="mode">
+                <option value="sequential" selected>Sequential</option>
+                <option value="random">Random</option>
+              </select>
+            </div>
+            <div>
+              <label>Start (sequential)</label>
+              <input id="start" type="number" min="0" value="0" />
+            </div>
+          </div>
+
+          <div class="btnRow">
+            <button id="genBtn" class="primary">Generate</button>
+            <button id="copyGenBtn">Copy</button>
+            <button id="clearGenBtn" class="danger">Clear</button>
+          </div>
+
+          <pre id="genStatus"></pre>
+        </div>
+
+        <div class="card">
+          <h2>Generated numbers</h2>
+          <textarea id="out" rows="18" placeholder="Generated numbers will appear here..."></textarea>
+          <div class="btnRow">
+            <button id="useGeneratedBtn2" class="primary">Use generated numbers</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHATS PAGE -->
+    <section id="page-chats" class="page">
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="card">
+          <h2>Chats (CRM)</h2>
+          <div class="hint">Shows chats even if number is not saved. Use filters as you like.</div>
+
+          <div class="row2" style="margin-top:10px;">
+            <div>
+              <label style="margin-top:0;">Filter</label>
+              <select id="onlyReplied">
+                <option value="0" selected>All chats</option>
+                <option value="1">Only replied (unread)</option>
+              </select>
+            </div>
+            <div>
+              <label style="margin-top:0;">Saved contacts</label>
+              <select id="onlyContacts">
+                <option value="0" selected>All conversations (saved + unsaved)</option>
+                <option value="1">Only saved contacts</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row2" style="margin-top:10px;">
+            <div>
+              <label style="margin-top:0;">Limit</label>
+              <input id="chatLimit" type="number" min="1" value="80" />
+            </div>
+            <div>
+              <label style="margin-top:0;">Search</label>
+              <input id="chatSearch" placeholder="Search name / number / category..." />
+            </div>
+          </div>
+
+          <div class="btnRow">
+            <button id="refreshChatsBtn" class="primary">Refresh chats</button>
+          </div>
+
+          <div id="chatList" class="list"></div>
+        </div>
+
+        <div class="card">
+          <h2>Chat panel</h2>
+          <div class="hint">Select a chat to classify + reply.</div>
+
+          <div class="chatCard" id="chatPanelEmpty">
+            <div class="hint">No chat selected.</div>
+          </div>
+
+          <div class="chatCard hidden" id="chatPanel">
+            <div class="chatTop">
+              <div>
+                <div class="chatName" id="selName">—</div>
+                <div class="chatMeta">
+                  <span class="mono" id="selNumber">—</span>
+                  <span class="sep">•</span>
+                  <span class="mono" id="selChatId">—</span>
+                </div>
+              </div>
+              <div class="unreadPill" id="selUnread">0</div>
+            </div>
+
+            <div class="chatPreview" id="selPreview"></div>
+
+            <div class="row2" style="margin-top:10px;">
+              <div>
+                <label style="margin-top:0;">Category</label>
+                <input id="selCategory" placeholder="beauty / cats / electro ..." />
+              </div>
+              <div>
+                <label style="margin-top:0;">Quick categories</label>
+                <div class="chipRow" id="quickCats">
+                  <span class="chip clickable" data-cat="beauty">beauty</span>
+                  <span class="chip clickable" data-cat="cats">cats</span>
+                  <span class="chip clickable" data-cat="electro">electro</span>
+                  <span class="chip clickable" data-cat="fitness">fitness</span>
+                  <span class="chip clickable" data-cat="travel">travel</span>
+                </div>
+              </div>
+            </div>
+
+            <label>Notes</label>
+            <textarea id="selNotes" rows="3" placeholder="What are they interested in? any details..."></textarea>
+
+            <div class="btnRow">
+              <button id="saveCategoryBtn" class="primary">Save category</button>
+              <button id="copyChatBtn">Copy number</button>
+            </div>
+
+            <label>Reply message</label>
+            <textarea id="chatReply" rows="4" placeholder="Write a message to reply..."></textarea>
+            <div class="btnRow">
+              <button id="sendChatBtn" class="primary">Send reply</button>
+            </div>
+
+            <div class="hint" id="chatStatus"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOGS PAGE -->
+    <section id="page-logs" class="page">
+      <div class="card">
+        <div class="logsHead">
+          <div>
+            <h2 style="margin:0;">Logs (Data Table)</h2>
+            <div class="hint">Realtime updates. Filter by type, client, time range, and search number.</div>
+          </div>
+
+          <div class="btnRow" style="margin-top:0;">
+            <button id="refreshLogsBtn" class="primary small">Refresh</button>
+          </div>
+        </div>
+
+        <div class="kpi">
+          <div class="box"><div class="n" id="kSent">—</div><div class="l">Sent</div></div>
+          <div class="box"><div class="n" id="kDelivered">—</div><div class="l">Delivered</div></div>
+          <div class="box"><div class="n" id="kSeen">—</div><div class="l">Seen</div></div>
+          <div class="box"><div class="n" id="kFailed">—</div><div class="l">Failed</div></div>
+        </div>
+
+        <div class="dtToolbar">
+          <div class="dtRow">
+            <div>
+              <label style="margin-top:0;">Type</label>
+              <select id="logTab">
+                <option value="sent">Sent</option>
+                <option value="delivered">Delivered</option>
+                <option value="seen">Seen</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="margin-top:0;">Client</label>
+              <select id="logClient">
+                <option value="">All accounts</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="margin-top:0;">From</label>
+              <input id="logFrom" type="datetime-local" />
+            </div>
+
+            <div>
+              <label style="margin-top:0;">To</label>
+              <input id="logTo" type="datetime-local" />
+            </div>
+
+            <div>
+              <label style="margin-top:0;">Search number</label>
+              <input id="logQ" placeholder="0642..." />
+            </div>
+          </div>
+
+          <div class="dtRow">
+            <div style="max-width:180px;">
+              <label style="margin-top:0;">Rows</label>
+              <select id="logPageSize">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </div>
+
+            <div class="dtBtns">
+              <button id="logPrev" class="small">◀ Prev</button>
+              <button id="logNext" class="small">Next ▶</button>
+              <div class="pill tiny mono" id="logPageInfo">Page 1</div>
+            </div>
+
+            <div class="dtRight">
+              <button id="logExport" class="small">Export CSV</button>
+              <button id="logClearFilter" class="small">Clear filters</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="dtWrap">
+          <table class="dt">
+            <thead>
+              <tr>
+                <th data-sort="at">Time</th>
+                <th data-sort="number">Number</th>
+                <th data-sort="clientId">Client</th>
+              </tr>
+            </thead>
+            <tbody id="logBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS PAGE -->
+    <section id="page-charts" class="page">
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="card">
+          <div class="logsHead">
+            <div>
+              <h2 style="margin:0;">Charts & Analytics</h2>
+              <div class="hint">Interactive charts with filters and time range. Realtime updates.</div>
+            </div>
+            <div class="btnRow" style="margin-top:0;">
+              <button id="refreshChartsBtn" class="primary small">Refresh</button>
+            </div>
+          </div>
+
+          <div class="dtToolbar" style="margin-top:12px;">
+            <div class="dtRow">
+              <div>
+                <label style="margin-top:0;">Group</label>
+                <select id="chartGroup">
+                  <option value="day" selected>Daily</option>
+                  <option value="hour">Hourly</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="margin-top:0;">From</label>
+                <input id="chartFrom" type="datetime-local" />
+              </div>
+
+              <div>
+                <label style="margin-top:0;">To</label>
+                <input id="chartTo" type="datetime-local" />
+              </div>
+
+              <div>
+                <label style="margin-top:0;">Top clients</label>
+                <input id="topClients" type="number" min="1" value="8" />
+              </div>
+            </div>
+          </div>
+
+          <div class="hint" id="chartHint" style="margin-top:10px;"></div>
+
+          <div class="chartCard">
+            <div class="chartTitle">Messages timeline (Sent / Delivered / Seen / Failed)</div>
+            <canvas id="chartTimeline" height="120"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chartCard">
+            <div class="chartTitle">Top clients by volume (Sent)</div>
+            <canvas id="chartTopSent" height="130"></canvas>
+          </div>
+
+          <div class="chartCard">
+            <div class="chartTitle">Top clients by volume (Delivered)</div>
+            <canvas id="chartTopDelivered" height="130"></canvas>
+          </div>
+
+          <div class="chartCard">
+            <div class="chartTitle">Delivery Funnel (Sent → Delivered → Seen → Failed)</div>
+            <canvas id="chartFunnel" height="130"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACCOUNT MANAGEMENT PAGE -->
+    <section id="page-accounts" class="page">
+      <div class="card">
+        <div class="accHead">
+          <div>
+            <h2 style="margin:0;">Account Management</h2>
+            <div class="hint">Rename, delete, or reconnect (scan again). Accounts persist after restart.</div>
+          </div>
+          <div class="btnRow" style="margin-top:0;">
+            <button id="refreshAccountsBtn" class="primary">Refresh</button>
+          </div>
+        </div>
+
+        <div class="hint" id="accountsStatus"></div>
+        <div class="accGrid" id="accountsGrid"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- libs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<!-- ✅ FIX: defer so DOM exists before JS runs -->
+<script src="./main.js" defer></script>
+</body>
+</html>
